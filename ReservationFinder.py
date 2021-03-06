@@ -7,6 +7,7 @@ import pandas as pd
 import requests
 import re
 import json
+import openpyxl
 
 def GetUserInput():
     #hood = input("Enter an NYC neighborhood: ").replace(" ", "%20")
@@ -32,7 +33,7 @@ def SetUpSelenium():
     options = Options()
     options.headless = True
     #options.add_argument("--window-size=1920,1200")
-    driver = webdriver.Chrome(executable_path=DRIVER_PATH)
+    driver = webdriver.Chrome(options=options, executable_path=DRIVER_PATH)
     return driver
 
 def ScrapeOpenTable (hood, date, time, party_size):
@@ -60,26 +61,37 @@ def ScrapeOpenTable (hood, date, time, party_size):
     return df
 
 def getReservationTimes(df, date, time, party_size):
+    #Only perform for first 3 restaurants for testing
+    df1 = df.head(3)
+    #Create a "times" column in the df
+    df1["times"] = ""
     #Prepare date/time inputs for url
     current_year, month, day, hour, minutes, am_pm = PrepInputsForUrl(date, time)
-    url = (df["urls"].get(0)["profileLink"]["link"])
-    url = url+"?p="+party_size+"&sd="+current_year+"-"+month+"-"+day+"T"+hour+"%3A"+minutes+"%3A00"
     #set up selenium
     driver = SetUpSelenium()
-    #scrape webpage
-    driver.get(url)
-    #find script elements
-    elements = driver.find_elements_by_tag_name("script")
-    #<script> element with times is the -3 element in list.
-    element = elements[-3].get_attribute("innerHTML")
-    #substring of element containing list with available times
-    times_list = json.loads(element[element.find("\"times\":")+8:element.find("\"noTimesMessage\":")-1])
-    for time in times_list:
-        print(time["timeString"])
+    #loop through df
+    for index, row in df1.iterrows():
+        #Get restaurant from URL and then navigate to page with specified user inputs
+        url = row["urls"]["profileLink"]["link"]
+        url = url+"?p="+party_size+"&sd="+current_year+"-"+month+"-"+day+"T"+hour+"%3A"+minutes+"%3A00"
+        #scrape webpage
+        driver.get(url)
+        #find script elements on webpage
+        elements = driver.find_elements_by_tag_name("script")
+        #<script> element with times is the -3 element in list.
+        element = elements[-3].get_attribute("innerHTML")
+        #convert substring of available times to a list
+        times_list = json.loads(element[element.find("\"times\":")+8:element.find("\"noTimesMessage\":")-1])
+        #list variable to store string format times for restaurant
+        times_list_string = []
+        #collect string format times
+        for time in times_list:
+            times_list_string.append(time["timeString"])
+        #store string format times in df
+        df1.at[index, "times"] = times_list_string
     #quit driver
     driver.quit()
-
-
+    df1.to_excel("OTrestaurants.xlsx")
 
 def main():
     hood, date, time, party_size = GetUserInput()
