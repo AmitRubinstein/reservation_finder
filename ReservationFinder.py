@@ -6,51 +6,85 @@ from selenium.webdriver.chrome.options import Options
 import pandas as pd
 import requests
 import re
+import json
 
 def GetUserInput():
     #hood = input("Enter an NYC neighborhood: ").replace(" ", "%20")
     #date = input("Enter a date for the reservation as MM/DD: ")
     #time = input("Enter a time for the reservation as HH:TT AM/PM: ")
+    #party_size = str(input("Enter a party size: "))
     hood = "murray%20hill"
-    date = "03/06"
+    date = "03/12"
     time = "07:30 PM"
-    return hood, date, time
+    party_size = "2"
+    return hood, date, time, party_size
 
-def ScrapeOpenTable (hood, date, time):
-    #Prepare inputs for url
+def PrepInputsForUrl(date, time):
     current_year = str(datetime.datetime.now().year)
     month, day = date.split("/")
     hour, minutes, am_pm = re.split("\s|\:", time)
     if am_pm == "PM":
         hour = str(int(hour) + 12)
-    #url
-    url = "https://www.opentable.com/s?dateTime="+current_year+"-"+month+"-"+day+"T"+hour+"%3"+"A"+minutes+"%3A00&covers=2&metroId=8term="+hood
-    print(url)
-    #set up selenium
+    return current_year, month, day, hour, minutes, am_pm
+
+def SetUpSelenium():
     DRIVER_PATH = '/usr/local/bin/chromedriver'
     options = Options()
-    #options.headless = True
-    options.add_argument("--window-size=1920,1200")
+    options.headless = True
+    #options.add_argument("--window-size=1920,1200")
     driver = webdriver.Chrome(executable_path=DRIVER_PATH)
+    return driver
+
+def ScrapeOpenTable (hood, date, time, party_size):
+    #Prepare date/time inputs for url
+    current_year, month, day, hour, minutes, am_pm = PrepInputsForUrl(date, time)
+    #url
+    url = "https://www.opentable.com/s?dateTime="+current_year+"-"+month+"-"+day+"T"+hour+"%3"+"A"+minutes+"%3A00&covers="+party_size+"&metroId=8term="+hood
+    print(url)
+    #set up selenium
+    driver = SetUpSelenium()
     driver.get(url)
     #scroll and execute js
     javaScript = "window.scrollBy(0,1000);"
     driver.execute_script(javaScript)
-    #print contents
-    #print(driver.page_source)
+    #identify all <script> elements since this is where the restaurant data is located.
     elements = driver.find_elements_by_tag_name("script")
-    for i, element in enumerate(elements):
-        contents = element.get_attribute("innerHTML")
-        print("Element index is :" + str(i))
-        print(contents)
-    #element = driver.find_elements_by_tag_name("script")[9].get_attribute("innerHTML")
-    #print(element)
+    #<script> element with restaurant data is the -2 element in list.
+    element = elements[-2].get_attribute("innerHTML")
+    #substring of element containing dictionary with restaurant data
+    script_data = element[element.find("\"restaurants\":")+14:element.find("\"totalRestaurantCount\":")-1]
+    #convert json script data (in string format) --> dictionary (json.loads) --> dataframe (DataFrame.from_dict)
+    df = pd.DataFrame.from_dict(json.loads(script_data))
+    #quit driver
+    driver.quit()
+    return df
+
+def getReservationTimes(df, date, time, party_size):
+    #Prepare date/time inputs for url
+    current_year, month, day, hour, minutes, am_pm = PrepInputsForUrl(date, time)
+    url = (df["urls"].get(0)["profileLink"]["link"])
+    url = url+"?p="+party_size+"&sd="+current_year+"-"+month+"-"+day+"T"+hour+"%3A"+minutes+"%3A00"
+    #set up selenium
+    driver = SetUpSelenium()
+    #scrape webpage
+    driver.get(url)
+    #find script elements
+    elements = driver.find_elements_by_tag_name("script")
+    #<script> element with times is the -3 element in list.
+    element = elements[-3].get_attribute("innerHTML")
+    #substring of element containing list with available times
+    times_list = json.loads(element[element.find("\"times\":")+8:element.find("\"noTimesMessage\":")-1])
+    for time in times_list:
+        print(time["timeString"])
     #quit driver
     driver.quit()
 
+
+
 def main():
-    hood, date, time = GetUserInput()
-    ScrapeOpenTable(hood, date, time)
+    hood, date, time, party_size = GetUserInput()
+    df = ScrapeOpenTable(hood, date, time, party_size)
+    getReservationTimes(df, date, time, party_size)
 
 if __name__ == "__main__":
     main()
