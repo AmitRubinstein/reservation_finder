@@ -37,28 +37,16 @@ def ScrapeOpenTable (hood, date, time):
     javaScript = "window.scrollBy(0,1000);"
     driver.execute_script(javaScript)
     #print contents
-    print(driver.page_source)
-    driver.find_elements
+    #print(driver.page_source)
+    elements = driver.find_elements_by_tag_name("script")
+    for i, element in enumerate(elements):
+        contents = element.get_attribute("innerHTML")
+        print("Element index is :" + str(i))
+        print(contents)
+    #element = driver.find_elements_by_tag_name("script")[9].get_attribute("innerHTML")
+    #print(element)
     #quit driver
     driver.quit()
-
-    #prep the soup
-    url = "https://www.opentable.com/s?dateTime="+current_year+"-"+month+"-"+day+"T"+hour+"%3"+"A"+minutes+"%3A00&covers=2&metroId=8term="+hood
-    print(url)
-    #html = urllib.request.urlopen(url).read()
-    #soup = BeautifulSoup(html, 'html.parser', from_encoding="utf-8")
-    #print(soup)
-    #restuarant_listings = soup.find("div", {"data-test":"restaurant-cards"})
-    #print(restuarant_listings)
-    #rest_names = soup.find_all("a", {"data-test":"res-card-name"})
-    #for name in rest_names:
-    #    print(name.text)
-    #for listing in restuarant_listings:
-    #    print(listing)
-    #    name = listing.get("h6")
-        #name = listing.find("a", {"data-test":"res-card-name"})
-    #    print(name)
-
 
 def main():
     hood, date, time = GetUserInput()
