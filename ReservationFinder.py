@@ -32,7 +32,7 @@ def SetUpSelenium():
     DRIVER_PATH = '/usr/local/bin/chromedriver'
     options = Options()
     options.headless = True
-    #options.add_argument("--window-size=1920,1200")
+    options.add_argument("--window-size=1920,1200")
     driver = webdriver.Chrome(options=options, executable_path=DRIVER_PATH)
     return driver
 
@@ -82,13 +82,13 @@ def getReservationTimes(df, date, time, party_size):
         element = elements[-3].get_attribute("innerHTML")
         #convert substring of available times to a list
         times_list = json.loads(element[element.find("\"times\":")+8:element.find("\"noTimesMessage\":")-1])
-        #list variable to store string format times for restaurant
-        times_list_string = []
-        #collect string format times
+        #list variable to store desired time data
+        available_times = []
+        #collect available times
         for time in times_list:
-            times_list_string.append(time["timeString"])
+            available_times.append(time["dateTime"])
         #store string format times in df
-        df1.at[index, "times"] = times_list_string
+        df1.at[index, "times"] = available_times
     #quit driver
     driver.quit()
     df1.to_excel("OTrestaurants.xlsx")
