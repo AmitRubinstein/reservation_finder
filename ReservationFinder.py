@@ -40,11 +40,12 @@ def ScrapeOpenTable (hood, date, time, party_size):
     #Prepare date/time inputs for url
     current_year, month, day, hour, minutes, am_pm = PrepInputsForUrl(date, time)
     #url
-    url = "https://www.opentable.com/s?dateTime="+current_year+"-"+month+"-"+day+"T"+hour+"%3"+"A"+minutes+"%3A00&covers="+party_size+"&metroId=8term="+hood
+    url = "https://www.opentable.com/s?dateTime="+current_year+"-"+month+"-"+day+"T"+hour+"%3"+"A"+minutes+"%3A00&covers="+party_size+"&term="+hood
     print(url)
     #set up selenium
     driver = SetUpSelenium()
     driver.get(url)
+    ##print(driver.page_source)
     #scroll and execute js
     javaScript = "window.scrollBy(0,1000);"
     driver.execute_script(javaScript)
