@@ -33,7 +33,7 @@ javaScript = "window.scrollBy(0,1000);"
 elements = driver.find_elements_by_tag_name("script")
 #<script> element with restaurant data is the -3 element in list.
 element = elements[-3].get_attribute("innerHTML")
-#substring of element containing dictionary with restaurant data
+#substring of element containing list with available times
 times_list = json.loads(element[element.find("\"times\":")+8:element.find("\"noTimesMessage\":")-1])
 for time in times_list:
     print(time["timeString"])
