@@ -1,5 +1,5 @@
 from bs4 import BeautifulSoup
-import urllib
+import urllib.request
 import datetime
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -9,7 +9,7 @@ import re
 import json
 import openpyxl
 
-def GetUserInput():
+def getUserInput():
     #hood = input("Enter an NYC neighborhood: ").replace(" ", "%20")
     #date = input("Enter a date for the reservation as MM/DD: ")
     #time = input("Enter a time for the reservation as HH:TT AM/PM: ")
@@ -20,7 +20,7 @@ def GetUserInput():
     party_size = "2"
     return hood, date, time, party_size
 
-def PrepInputsForUrl(date, time):
+def prepInputsForUrl(date, time):
     current_year = str(datetime.datetime.now().year)
     month, day = date.split("/")
     hour, minutes, am_pm = re.split("\s|\:", time)
@@ -28,7 +28,7 @@ def PrepInputsForUrl(date, time):
         hour = str(int(hour) + 12)
     return current_year, month, day, hour, minutes, am_pm
 
-def SetUpSelenium():
+def setUpSelenium():
     DRIVER_PATH = '/usr/local/bin/chromedriver'
     options = Options()
     options.headless = True
@@ -36,14 +36,19 @@ def SetUpSelenium():
     driver = webdriver.Chrome(options=options, executable_path=DRIVER_PATH)
     return driver
 
-def ScrapeOpenTable (hood, date, time, party_size):
+def setUpBS(url):
+    page = urllib.request.urlopen(url)
+    soup = BeautifulSoup(page, "html.parser")
+    return soup
+
+def scrapeOpenTable (hood, date, time, party_size):
     #Prepare date/time inputs for url
-    current_year, month, day, hour, minutes, am_pm = PrepInputsForUrl(date, time)
+    current_year, month, day, hour, minutes, am_pm = prepInputsForUrl(date, time)
     #generate url
     url = "https://www.opentable.com/s?dateTime="+current_year+"-"+month+"-"+day+"T"+hour+"%3"+"A"+minutes+"%3A00&covers="+party_size+"&term="+hood
     print(url)
     #set up selenium
-    driver = SetUpSelenium()
+    driver = setUpSelenium()
     driver.get(url)
     ##print(driver.page_source)
     #scroll and execute js
@@ -58,12 +63,13 @@ def ScrapeOpenTable (hood, date, time, party_size):
     #quit driver
     driver.quit()
     #convert json script data (in string format) --> dictionary (json.loads) --> dataframe (DataFrame.from_dict)
-    df = pd.DataFrame.from_dict(json.loads(script_data))
+    #.head(3) for testing purposes
+    df = pd.DataFrame.from_dict(json.loads(script_data)).head(3)
     #remove unneeded data columns
-    #df.drop(["type", "campaignId", "isPinned", "photos", "justAddedDetails", "matchRelevance", "orderOnlineLink"])
     df = df.drop(["type", "campaignId", "isPinned", "photos", "justAddedDetails", "matchRelevance", "orderOnlineLink"], axis=1)
-    #Create a "times" column in the df
+    #Create "times" and "yelp rating" columns in the df
     df["times"] = ""
+    df["yelp rating"] = ""
     #Clean data
     for index, row in df.iterrows():
         df.at[index, "urls"] = row["urls"]["profileLink"]["link"]
@@ -74,16 +80,13 @@ def ScrapeOpenTable (hood, date, time, party_size):
     return df
 
 def getReservationTimes(df, date, time, party_size):
-    #Only perform for first 3 restaurants for testing
-    df1 = df.head(3)
     #Prepare date/time inputs for url
-    current_year, month, day, hour, minutes, am_pm = PrepInputsForUrl(date, time)
+    current_year, month, day, hour, minutes, am_pm = prepInputsForUrl(date, time)
     #set up selenium
-    driver = SetUpSelenium()
+    driver = setUpSelenium()
     #loop through df
-    for index, row in df1.iterrows():
+    for index, row in df.iterrows():
         #Get restaurant from URL and then navigate to page with specified user inputs
-        #url = row["urls"]["profileLink"]["link"]
         url = row["urls"]
         url = url+"?p="+party_size+"&sd="+current_year+"-"+month+"-"+day+"T"+hour+"%3A"+minutes+"%3A00"
         #scrape webpage
@@ -100,15 +103,27 @@ def getReservationTimes(df, date, time, party_size):
         for time in times_list:
             available_times.append(time["dateTime"])
         #store string format times in df
-        df1.at[index, "times"] = available_times
+        df.at[index, "times"] = available_times
     #quit driver
     driver.quit()
-    df1.to_excel("OTrestaurants.xlsx")
+    return df
+
+#Utilize BeautifulSoup to scrape yelp ratings from bing search
+def getYelpReviews(df):
+    for index, row in df.iterrows():
+        url = "https://www.bing.com/search?q="+row["name"].replace(" ","+")+row["contactInformation"]["phoneNumber"]+"+yelp+restaurant"
+        soup = setUpBS(url)
+        yelp_rating = soup.find("div", class_="b_sritem b_srtxtstarcolor").get_text()
+        df.at[index, "yelp rating"] = yelp_rating
+    return df
 
 def main():
-    hood, date, time, party_size = GetUserInput()
-    df = ScrapeOpenTable(hood, date, time, party_size)
-    getReservationTimes(df, date, time, party_size)
+    hood, date, time, party_size = getUserInput()
+    df = scrapeOpenTable(hood, date, time, party_size)
+    df = getReservationTimes(df, date, time, party_size)
+    df = getYelpReviews(df)
+    df.to_excel("OTrestaurants.xlsx")
+
 
 if __name__ == "__main__":
     main()
