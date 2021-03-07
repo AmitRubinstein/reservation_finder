@@ -39,7 +39,7 @@ def SetUpSelenium():
 def ScrapeOpenTable (hood, date, time, party_size):
     #Prepare date/time inputs for url
     current_year, month, day, hour, minutes, am_pm = PrepInputsForUrl(date, time)
-    #url
+    #generate url
     url = "https://www.opentable.com/s?dateTime="+current_year+"-"+month+"-"+day+"T"+hour+"%3"+"A"+minutes+"%3A00&covers="+party_size+"&term="+hood
     print(url)
     #set up selenium
@@ -49,23 +49,33 @@ def ScrapeOpenTable (hood, date, time, party_size):
     #scroll and execute js
     javaScript = "window.scrollBy(0,1000);"
     driver.execute_script(javaScript)
-    #identify all <script> elements since this is where the restaurant data is located.
+    #identify all <script> elements - this is where the target data is located.
     elements = driver.find_elements_by_tag_name("script")
     #<script> element with restaurant data is the -2 element in list.
     element = elements[-2].get_attribute("innerHTML")
     #substring of element containing dictionary with restaurant data
     script_data = element[element.find("\"restaurants\":")+14:element.find("\"totalRestaurantCount\":")-1]
-    #convert json script data (in string format) --> dictionary (json.loads) --> dataframe (DataFrame.from_dict)
-    df = pd.DataFrame.from_dict(json.loads(script_data))
     #quit driver
     driver.quit()
+    #convert json script data (in string format) --> dictionary (json.loads) --> dataframe (DataFrame.from_dict)
+    df = pd.DataFrame.from_dict(json.loads(script_data))
+    #remove unneeded data columns
+    #df.drop(["type", "campaignId", "isPinned", "photos", "justAddedDetails", "matchRelevance", "orderOnlineLink"])
+    df = df.drop(["type", "campaignId", "isPinned", "photos", "justAddedDetails", "matchRelevance", "orderOnlineLink"], axis=1)
+    #Create a "times" column in the df
+    df["times"] = ""
+    #Clean data
+    for index, row in df.iterrows():
+        df.at[index, "urls"] = row["urls"]["profileLink"]["link"]
+        df.at[index, "priceBand"] = row["priceBand"]["priceBandId"]
+        df.at[index, "neighborhood"] = row["neighborhood"]["name"]
+        df.at[index, "primaryCuisine"] = row["primaryCuisine"]["name"]
+        #df.at[index, "topReview"] = row["topReview"]["highlightedText"]
     return df
 
 def getReservationTimes(df, date, time, party_size):
     #Only perform for first 3 restaurants for testing
     df1 = df.head(3)
-    #Create a "times" column in the df
-    df1["times"] = ""
     #Prepare date/time inputs for url
     current_year, month, day, hour, minutes, am_pm = PrepInputsForUrl(date, time)
     #set up selenium
@@ -73,7 +83,8 @@ def getReservationTimes(df, date, time, party_size):
     #loop through df
     for index, row in df1.iterrows():
         #Get restaurant from URL and then navigate to page with specified user inputs
-        url = row["urls"]["profileLink"]["link"]
+        #url = row["urls"]["profileLink"]["link"]
+        url = row["urls"]
         url = url+"?p="+party_size+"&sd="+current_year+"-"+month+"-"+day+"T"+hour+"%3A"+minutes+"%3A00"
         #scrape webpage
         driver.get(url)
