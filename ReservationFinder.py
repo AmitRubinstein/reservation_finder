@@ -47,9 +47,8 @@ def setUpBS(url):
 
 #Query the search on OpenTable and return results as a DataFrame.
 def scrapeOpenTable (hood, date, time, party_size):
-    #Prepare date/time inputs for url
-    current_year, month, day, hour, minutes, am_pm = prepInputsForUrl(date, time)
     #generate url
+    current_year, month, day, hour, minutes, am_pm = prepInputsForUrl(date, time)
     url = "https://www.opentable.com/s?dateTime="+current_year+"-"+month+"-"+day+"T"+hour+"%3"+"A"+minutes+"%3A00&covers="+party_size+"&term="+hood
     print(url)
     #set up selenium
@@ -59,23 +58,20 @@ def scrapeOpenTable (hood, date, time, party_size):
     #scroll and execute js
     javaScript = "window.scrollBy(0,1000);"
     driver.execute_script(javaScript)
-    #identify all <script> elements - this is where the target data is located.
+    #identify all <script> elements - elemnt -2 is where the target data is located.
     elements = driver.find_elements_by_tag_name("script")
-    #<script> element with restaurant data is the -2 element in list.
     element = elements[-2].get_attribute("innerHTML")
-    #substring of element containing dictionary with restaurant data
+    #Pull substring of element containing dictionary with restaurant data
     script_data = element[element.find("\"restaurants\":")+14:element.find("\"totalRestaurantCount\":")-1]
-    #quit driver
     driver.quit()
     #convert json script data (in string format) --> dictionary (json.loads) --> dataframe (DataFrame.from_dict)
     #.head(3) for testing purposes
     df = pd.DataFrame.from_dict(json.loads(script_data)).head(3)
-    #remove unneeded data columns
+    #remove unneeded data columns and add new columns
     df = df.drop(["type", "campaignId", "isPinned", "photos", "justAddedDetails", "matchRelevance", "orderOnlineLink"], axis=1)
-    #Create "times" and "yelp rating" columns in the df
     df["times"] = ""
     df["yelp rating"] = ""
-    #Clean data
+    #Clean and format data
     for index, row in df.iterrows():
         df.at[index, "urls"] = row["urls"]["profileLink"]["link"]
         df.at[index, "priceBand"] = row["priceBand"]["priceBandId"]
@@ -86,31 +82,24 @@ def scrapeOpenTable (hood, date, time, party_size):
 
 #Loop through the individiual pages for each restaurant returned in scrapeOpenTable and scrape the available times.
 def getReservationTimes(df, date, time, party_size):
-    #Prepare date/time inputs for url
     current_year, month, day, hour, minutes, am_pm = prepInputsForUrl(date, time)
-    #set up selenium
     driver = setUpSelenium()
-    #loop through df
     for index, row in df.iterrows():
         #Get restaurant from URL and then navigate to page with specified user inputs
         url = row["urls"]
         url = url+"?p="+party_size+"&sd="+current_year+"-"+month+"-"+day+"T"+hour+"%3A"+minutes+"%3A00"
-        #scrape webpage
         driver.get(url)
-        #find script elements on webpage
+        #find script elements on webpage <script> element with times is the -3 element in list.
         elements = driver.find_elements_by_tag_name("script")
-        #<script> element with times is the -3 element in list.
         element = elements[-3].get_attribute("innerHTML")
         #convert substring of available times to a list
         times_list = json.loads(element[element.find("\"times\":")+8:element.find("\"noTimesMessage\":")-1])
-        #list variable to store desired time data
         available_times = []
-        #collect available times
+        #store available times in dataframe
         for time in times_list:
             available_times.append(time["dateTime"])
         #store string format times in df
         df.at[index, "times"] = available_times
-    #quit driver
     driver.quit()
     return df
 
@@ -130,7 +119,6 @@ def main():
     df = getReservationTimes(df, date, time, party_size)
     df = getYelpReviews(df)
     df.to_excel("OTrestaurants.xlsx")
-
 
 if __name__ == "__main__":
     main()
