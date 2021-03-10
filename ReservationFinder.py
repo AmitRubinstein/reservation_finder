@@ -9,6 +9,7 @@ import re
 import json
 import openpyxl
 
+#Solicits input from the user via printed messages.
 def getUserInput():
     #hood = input("Enter an NYC neighborhood: ").replace(" ", "%20")
     #date = input("Enter a date for the reservation as MM/DD: ")
@@ -20,6 +21,7 @@ def getUserInput():
     party_size = "2"
     return hood, date, time, party_size
 
+#Function to convert user inputs into URL format to query the search.
 def prepInputsForUrl(date, time):
     current_year = str(datetime.datetime.now().year)
     month, day = date.split("/")
@@ -28,6 +30,7 @@ def prepInputsForUrl(date, time):
         hour = str(int(hour) + 12)
     return current_year, month, day, hour, minutes, am_pm
 
+#Function to configure Selenium and create a driver object.
 def setUpSelenium():
     DRIVER_PATH = '/usr/local/bin/chromedriver'
     options = Options()
@@ -36,11 +39,13 @@ def setUpSelenium():
     driver = webdriver.Chrome(options=options, executable_path=DRIVER_PATH)
     return driver
 
+#Function to configure BeautifulSoup and create a soup object.
 def setUpBS(url):
     page = urllib.request.urlopen(url)
     soup = BeautifulSoup(page, "html.parser")
     return soup
 
+#Query the search on OpenTable and return results as a DataFrame.
 def scrapeOpenTable (hood, date, time, party_size):
     #Prepare date/time inputs for url
     current_year, month, day, hour, minutes, am_pm = prepInputsForUrl(date, time)
@@ -79,6 +84,7 @@ def scrapeOpenTable (hood, date, time, party_size):
         #df.at[index, "topReview"] = row["topReview"]["highlightedText"]
     return df
 
+#Loop through the individiual pages for each restaurant returned in scrapeOpenTable and scrape the available times.
 def getReservationTimes(df, date, time, party_size):
     #Prepare date/time inputs for url
     current_year, month, day, hour, minutes, am_pm = prepInputsForUrl(date, time)
@@ -117,6 +123,7 @@ def getYelpReviews(df):
         df.at[index, "yelp rating"] = yelp_rating
     return df
 
+#Orchestrate execution of script and return the generated dataframe as a spreadsheet.
 def main():
     hood, date, time, party_size = getUserInput()
     df = scrapeOpenTable(hood, date, time, party_size)
