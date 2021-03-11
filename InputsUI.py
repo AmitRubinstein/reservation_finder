@@ -10,17 +10,27 @@ party_sizes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19
 layout = [
     [sg.Text("Find Your Table", justification="center", size=(45,1), font=("Source Sans Bold", 25))],
     [sg.Text("")],
-    [sg.CalendarButton("Date", font=("Source Sans Bold", 14), close_when_date_chosen=True,  target='-IN-', no_titlebar=False, format='%b %d, %Y' ), sg.Input(key='-IN-', size=(15,1), font=("Source Sans Bold", 14)), 
-    sg.Text("Time", font=("Source Sans Bold", 14)), sg.Combo(times, font=("Source Sans Bold", 14)), sg.Text("Party Size", font=("Source Sans Bold", 14)), sg.Combo(party_sizes, font=("Source Sans Bold", 14)), sg.Text("Neighborhood", font=("Source Sans Bold", 14)), sg.InputText(size=(15,1), font=("Source Sans Bold", 14))],
+    [sg.CalendarButton("Date", font=("Source Sans Bold", 14), close_when_date_chosen=True,  target='date_input', no_titlebar=False, format='%m/%d' ), sg.Input(key='date_input', size=(15,1), font=("Source Sans Bold", 14)), 
+    sg.Text("Time", font=("Source Sans Bold", 14)), sg.Combo(times, font=("Source Sans Bold", 14), key="time_input"), sg.Text("Party Size", font=("Source Sans Bold", 14)), 
+    sg.Combo(party_sizes, font=("Source Sans Bold", 14), key="party_input"), sg.Text("Neighborhood", font=("Source Sans Bold", 14)), sg.InputText(size=(15,1), font=("Source Sans Bold", 14), key="hood_input")],
     [sg.Text("")],
-    [sg.Exit(font=("Source Sans Bold", 14))]
+    [sg.CloseButton("Submit", font=("Source Sans Bold", 14)), sg.Exit(font=("Source Sans Bold", 14))]
     ]
 
 window = sg.Window('Reservation Details', layout)
 
 while True:
     event, values = window.read()
+    date = values["date_input"]
+    time = values["time_input"]
+    party_size = values["party_input"]
+    hood = values["hood_input"]
     print(event, values)
     if event in (sg.WIN_CLOSED, 'Exit'):
         break
 window.close()
+
+print(date)
+print(time)
+print(party_size)
+print(hood)
