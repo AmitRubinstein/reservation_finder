@@ -8,27 +8,17 @@ import requests
 import re
 import json
 import openpyxl
+import InputsUI
+from requests_html import HTMLSession
 
-#Solicits input from the user via printed messages.
-def getUserInput():
-    #hood = input("Enter an NYC neighborhood: ").replace(" ", "%20")
-    #date = input("Enter a date for the reservation as MM/DD: ")
-    #time = input("Enter a time for the reservation as HH:TT AM/PM: ")
-    #party_size = str(input("Enter a party size: "))
-    hood = "murray%20hill"
-    date = "03/12"
-    time = "07:30 PM"
-    party_size = "2"
-    return hood, date, time, party_size
 
 #Function to convert user inputs into URL format to query the search.
 def prepInputsForUrl(date, time):
-    current_year = str(datetime.datetime.now().year)
-    month, day = date.split("/")
+    month, day, year = date.split("/")
     hour, minutes, am_pm = re.split("\s|\:", time)
     if am_pm == "PM":
         hour = str(int(hour) + 12)
-    return current_year, month, day, hour, minutes, am_pm
+    return year, month, day, hour, minutes, am_pm
 
 #Function to configure Selenium and create a driver object.
 def setUpSelenium():
@@ -41,15 +31,18 @@ def setUpSelenium():
 
 #Function to configure BeautifulSoup and create a soup object.
 def setUpBS(url):
-    page = urllib.request.urlopen(url)
-    soup = BeautifulSoup(page, "html.parser")
+    #page = urllib.request.urlopen(url)
+    session = HTMLSession()
+    resp = session.get(url)
+    resp.html.render()
+    soup = BeautifulSoup(resp.html.html, "lxml")
     return soup
 
 #Query the search on OpenTable and return results as a DataFrame.
-def scrapeOpenTable (hood, date, time, party_size):
+def scrapeOpenTable (date, time, party_size, hood):
     #generate url
-    current_year, month, day, hour, minutes, am_pm = prepInputsForUrl(date, time)
-    url = "https://www.opentable.com/s?dateTime="+current_year+"-"+month+"-"+day+"T"+hour+"%3"+"A"+minutes+"%3A00&covers="+party_size+"&term="+hood
+    year, month, day, hour, minutes, am_pm = prepInputsForUrl(date, time)
+    url = "https://www.opentable.com/s?dateTime="+year+"-"+month+"-"+day+"T"+hour+"%3"+"A"+minutes+"%3A00&covers="+str(party_size)+"&term="+hood.replace(" ", "%20")
     print(url)
     #set up selenium
     driver = setUpSelenium()
@@ -82,12 +75,12 @@ def scrapeOpenTable (hood, date, time, party_size):
 
 #Loop through the individiual pages for each restaurant returned in scrapeOpenTable and scrape the available times.
 def getReservationTimes(df, date, time, party_size):
-    current_year, month, day, hour, minutes, am_pm = prepInputsForUrl(date, time)
+    year, month, day, hour, minutes, am_pm = prepInputsForUrl(date, time)
     driver = setUpSelenium()
     for index, row in df.iterrows():
         #Get restaurant from URL and then navigate to page with specified user inputs
         url = row["urls"]
-        url = url+"?p="+party_size+"&sd="+current_year+"-"+month+"-"+day+"T"+hour+"%3A"+minutes+"%3A00"
+        url = url+"?p="+str(party_size)+"&sd="+year+"-"+month+"-"+day+"T"+hour+"%3A"+minutes+"%3A00"
         driver.get(url)
         #find script elements on webpage <script> element with times is the -3 element in list.
         elements = driver.find_elements_by_tag_name("script")
@@ -114,8 +107,8 @@ def getYelpReviews(df):
 
 #Orchestrate execution of script and return the generated dataframe as a spreadsheet.
 def main():
-    hood, date, time, party_size = getUserInput()
-    df = scrapeOpenTable(hood, date, time, party_size)
+    date, time, party_size, hood = InputsUI.getUserInput()
+    df = scrapeOpenTable(date, time, party_size, hood)
     df = getReservationTimes(df, date, time, party_size)
     df = getYelpReviews(df)
     df.to_excel("OTrestaurants.xlsx")
