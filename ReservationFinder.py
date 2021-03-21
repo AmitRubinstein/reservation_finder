@@ -61,16 +61,23 @@ def scrapeOpenTable (date, time, party_size, hood):
     #.head(3) for testing purposes
     df = pd.DataFrame.from_dict(json.loads(script_data)).head(3)
     #remove unneeded data columns and add new columns
-    df = df.drop(["type", "campaignId", "isPinned", "photos", "justAddedDetails", "matchRelevance", "orderOnlineLink"], axis=1)
+    df = df.drop(["type", "campaignId", "isPinned", "photos", "justAddedDetails", "matchRelevance", "orderOnlineLink", "features", "restaurantAvailabilityToken", "__typename", "offers", "deliveryPartners"], axis=1)
     df["times"] = ""
-    df["yelp rating"] = ""
+    df["open table rating"] = None
+    df["num of open table ratings"] = None
+    df["yelp rating"] = None
+    df["num of ratings"] = None
     #Clean and format data
     for index, row in df.iterrows():
         df.at[index, "urls"] = row["urls"]["profileLink"]["link"]
         df.at[index, "priceBand"] = row["priceBand"]["priceBandId"]
         df.at[index, "neighborhood"] = row["neighborhood"]["name"]
         df.at[index, "primaryCuisine"] = row["primaryCuisine"]["name"]
-        #df.at[index, "topReview"] = row["topReview"]["highlightedText"]
+        df.at[index, "topReview"] = row["topReview"]["highlightedText"]
+        df.at[index, "open table rating"] = row["statistics"]["reviews"]["ratings"]["overall"]["rating"]
+        df.at[index, "num of open table ratings"] = row["statistics"]["reviews"]["allTimeTextReviewCount"]
+        df.at[index, "description"] = row["description"].replace("<br />", " ")
+    df = df.drop(["statistics"], axis=1)
     return df
 
 #Loop through the individiual pages for each restaurant returned in scrapeOpenTable and scrape the available times.
@@ -81,6 +88,7 @@ def getReservationTimes(df, date, time, party_size):
         #Get restaurant from URL and then navigate to page with specified user inputs
         url = row["urls"]
         url = url+"?p="+str(party_size)+"&sd="+year+"-"+month+"-"+day+"T"+hour+"%3A"+minutes+"%3A00"
+        print(url)
         driver.get(url)
         #find script elements on webpage <script> element with times is the -3 element in list.
         elements = driver.find_elements_by_tag_name("script")
@@ -100,17 +108,22 @@ def getReservationTimes(df, date, time, party_size):
 def getYelpReviews(df):
     for index, row in df.iterrows():
         url = "https://www.bing.com/search?q="+row["name"].replace(" ","+")+row["contactInformation"]["phoneNumber"]+"+yelp+restaurant"
+        print(url)
         soup = setUpBS(url)
         yelp_rating = soup.find("div", class_="b_sritem b_srtxtstarcolor").get_text()
-        df.at[index, "yelp rating"] = yelp_rating
-    return df
+        num_of_ratings = yelp_rating[yelp_rating.find("(")+1:-1]
+        yelp_rating = yelp_rating[:yelp_rating.find("/")]
+        df.at[index, "yelp rating"] = float(yelp_rating)
+        df.at[index, "num of ratings"] = int(num_of_ratings)
+    df_filtered = df[df["yelp rating"] >= 4]
+    return df_filtered
 
 #Orchestrate execution of script and return the generated dataframe as a spreadsheet.
 def main():
     date, time, party_size, hood = InputsUI.getUserInput()
     df = scrapeOpenTable(date, time, party_size, hood)
-    df = getReservationTimes(df, date, time, party_size)
     df = getYelpReviews(df)
+    df = getReservationTimes(df, date, time, party_size)
     df.to_excel("OTrestaurants.xlsx")
 
 if __name__ == "__main__":
