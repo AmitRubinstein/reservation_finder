@@ -61,10 +61,10 @@ def scrapeOpenTable (date, time, party_size, hood):
     #.head(3) for testing purposes
     df = pd.DataFrame.from_dict(json.loads(script_data)).head(3)
     #remove unneeded data columns and add new columns
-    df = df.drop(["type", "campaignId", "isPinned", "photos", "justAddedDetails", "matchRelevance", "orderOnlineLink", "features", "restaurantAvailabilityToken", "__typename", "offers", "deliveryPartners"], axis=1)
+    df = df.drop(["restaurantId", "isPromoted", "hasTakeout", "type", "campaignId", "isPinned", "photos", "justAddedDetails", "matchRelevance", "orderOnlineLink", "features", "restaurantAvailabilityToken", "__typename", "offers", "deliveryPartners"], axis=1)
     df["times"] = ""
     df["open table rating"] = None
-    df["num of open table ratings"] = None
+    #df["num of open table ratings"] = None
     df["yelp rating"] = None
     df["num of ratings"] = None
     #Clean and format data
@@ -74,8 +74,8 @@ def scrapeOpenTable (date, time, party_size, hood):
         df.at[index, "neighborhood"] = row["neighborhood"]["name"]
         df.at[index, "primaryCuisine"] = row["primaryCuisine"]["name"]
         df.at[index, "topReview"] = row["topReview"]["highlightedText"]
-        df.at[index, "open table rating"] = row["statistics"]["reviews"]["ratings"]["overall"]["rating"]
-        df.at[index, "num of open table ratings"] = row["statistics"]["reviews"]["allTimeTextReviewCount"]
+        df.at[index, "open table rating"] = str(row["statistics"]["reviews"]["ratings"]["overall"]["rating"]) + " (" + str(row["statistics"]["reviews"]["allTimeTextReviewCount"]) + ")"
+        #df.at[index, "num of open table ratings"] = row["statistics"]["reviews"]["allTimeTextReviewCount"]
         df.at[index, "description"] = row["description"].replace("<br />", " ")
     df = df.drop(["statistics"], axis=1)
     return df
@@ -114,7 +114,7 @@ def getYelpReviews(df):
         num_of_ratings = yelp_rating[yelp_rating.find("(")+1:-1]
         yelp_rating = yelp_rating[:yelp_rating.find("/")]
         df.at[index, "yelp rating"] = float(yelp_rating)
-        df.at[index, "num of ratings"] = int(num_of_ratings)
+        df.at[index, "num of ratings"] = num_of_ratings
     df_filtered = df[df["yelp rating"] >= 4]
     return df_filtered
 
@@ -124,7 +124,7 @@ def main():
     df = scrapeOpenTable(date, time, party_size, hood)
     df = getYelpReviews(df)
     df = getReservationTimes(df, date, time, party_size)
-    df.to_excel("OTrestaurants.xlsx")
+    InputsUI.showSearchResults(df)
 
 if __name__ == "__main__":
     main()
