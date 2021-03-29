@@ -124,7 +124,9 @@ def main():
     df = scrapeOpenTable(date, time, party_size, hood)
     df = getYelpReviews(df)
     df = getReservationTimes(df, date, time, party_size)
-    InputsUI.showSearchResults(df)
+    df.to_csv("OTrestaurants.csv")
+    df = pd.read_csv("OTrestaurants.csv")
+    InputsUI.showSearchResults(df, date, time, party_size, hood)
 
 if __name__ == "__main__":
     main()
