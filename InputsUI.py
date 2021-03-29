@@ -5,6 +5,9 @@ Created by Amit Rubinstein (March 2021)
 """
 import PySimpleGUI as sg
 import datetime
+import webbrowser
+import pandas as pd
+import ast
 
 sg.theme('DarkGrey11') 
 
@@ -106,27 +109,46 @@ def getUserInput():
     window.close()
     return date, time, party_size, hood
 
-def showSearchResults(df):
-    for index, row in df.iterrows():
-        df.at[index, "contactInformation"] = row["contactInformation"]["formattedPhoneNumber"]
-        df.at[index, "yelp rating"] = str(row["yelp rating"])+" ("+str(row["num of ratings"])+")"
-    #df["yelp rating"] = str(df["yelp rating"])+" ("+str(df["num of ratings"])+")"
-    df = df.drop(["num of ratings"], axis=1)
-    df = df.rename(columns={"name":"Restaurant","urls":"OpenTable Link","priceBand":"Price Band","neighborhood":"Neighborhood",
-    "primaryCuisine":"Cuisine","description":"Description","topReview":"Top Review","contactInformation":"Phone Number",
-    "times":"Available Reservation Times", "open table rating":"OpenTable Rating","yelp rating":"Yelp Rating"})
-    data = df.values.tolist() 
-    header_list = list(df.columns)
+def showSearchResults(df, date, time, party_size, hood):
     layout = [
         [sg.Text("Search Results", justification="center", size=(45,1), font=("Source Sans Bold", 25))],
+        [sg.Text(size=(30,1)), sg.Image(filename = "smallCal.png"), sg.Text(date, justification="center", font=("Source Sans Bold", 16)), 
+        sg.Image(filename = "smallTime.png"), sg.Text(time, font=("Source Sans Bold", 16)),
+        sg.Image(filename = "smallParty.png"), sg.Text(party_size, font=("Source Sans Bold", 16)),
+        sg.Image(filename = "smallLoc.png"), sg.Text(hood, font=("Source Sans Bold", 16))],
+        #[sg.Text(date+" • "+time+" • "+party_size+" • "+hood, justification="center", size=(80,1), font=("Source Sans Bold", 14))],
         [sg.Text()],
         ]
+    
     for index, row in df.iterrows():
-        layout.append([sg.Text(row["Restaurant"])])
+        layout.append([sg.Text(row["name"],font=("Source Sans Bold", 20)), 
+        sg.Text("("+("$"*row["priceBand"])+" • "+row["primaryCuisine"]+")", font=("Source Sans Bold", 14))])
+        if row["yelp rating"] == 4:
+            layout.append([sg.Image(filename = "4Stars.png"), sg.Text(row["yelp rating"], font=("Source Sans Bold", 14))])
+        elif row["yelp rating"] == 5:
+            layout.append([sg.Image(filename = "5Stars.png"), sg.Text(row["yelp rating"], font=("Source Sans Bold", 14))])
+        else:
+            layout.append([sg.Image(filename = "45Stars.png"), sg.Text(row["yelp rating"], font=("Source Sans Bold", 14))])
+        layout.append([sg.Text("Available Times:", font=("Source Sans Bold", 14))])
+        #times = row["times"].strip("][''").split(", ")
+        times = ast.literal_eval(row["times"])
+        for i in times:
+            print(i)
+            time = datetime.datetime.strptime(i[:-6], "%Y-%m-%dT%H:%M:%S").strftime("%I:%M %p")
+            layout[-1].append(sg.Button(button_text=time, image_filename = "Button.png", image_subsample=2, font=("Source Sans Bold", 14), enable_events=True, key=row["name"]+"-link"))
+        layout.append([sg.HorizontalSeparator()])
+    
     window = sg.Window('Available Reservations', layout)
-    event, values = window.read()
+    while True:
+        event, values = window.read()
+        print(event, values)
+        if event[:event.find("-link")] in df["name"].values:
+            print(df.loc[df["name"]==event[:event.find("-link")], "urls"].iloc[0])
+            webbrowser.open(df.loc[df["name"]==event[:event.find("-link")], "urls"].iloc[0])
+        if event == sg.WIN_CLOSED:
+            break
     window.close()
     #df.to_csv("OTrestaurants.csv")
     #layout = [
     #    [sg.Text("Available Reservations", justification="center", size=(45,1), font=("Source Sans Bold", 25))],
-    #    [sg.Text("")],
+    #    [sg.Text(""``)],
