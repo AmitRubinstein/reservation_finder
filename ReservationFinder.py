@@ -1,3 +1,8 @@
+"""
+This program finds restaurant reservations on OpenTable for restaurants with 4+ stars on Yelp.
+
+Created by Amit Rubinstein (March 2021)
+"""
 from bs4 import BeautifulSoup
 import urllib.request
 import datetime
@@ -47,7 +52,6 @@ def scrapeOpenTable (date, time, party_size, hood):
     #set up selenium
     driver = setUpSelenium()
     driver.get(url)
-    ##print(driver.page_source)
     #scroll and execute js
     javaScript = "window.scrollBy(0,1000);"
     driver.execute_script(javaScript)
@@ -58,7 +62,6 @@ def scrapeOpenTable (date, time, party_size, hood):
     script_data = element[element.find("\"restaurants\":")+14:element.find("\"totalRestaurantCount\":")-1]
     driver.quit()
     #convert json script data (in string format) --> dictionary (json.loads) --> dataframe (DataFrame.from_dict)
-    #.head(3) for testing purposes
     df = pd.DataFrame.from_dict(json.loads(script_data)).head(3)
     #remove unneeded data columns and add new columns
     df = df.drop(["restaurantId", "isPromoted", "hasTakeout", "type", "campaignId", "isPinned", "photos", "justAddedDetails", "matchRelevance", "orderOnlineLink", "features", "restaurantAvailabilityToken", "__typename", "offers", "deliveryPartners"], axis=1)
@@ -75,7 +78,6 @@ def scrapeOpenTable (date, time, party_size, hood):
         df.at[index, "primaryCuisine"] = row["primaryCuisine"]["name"]
         df.at[index, "topReview"] = row["topReview"]["highlightedText"]
         df.at[index, "open table rating"] = str(row["statistics"]["reviews"]["ratings"]["overall"]["rating"]) + " (" + str(row["statistics"]["reviews"]["allTimeTextReviewCount"]) + ")"
-        #df.at[index, "num of open table ratings"] = row["statistics"]["reviews"]["allTimeTextReviewCount"]
         df.at[index, "description"] = row["description"].replace("<br />", " ")
     df = df.drop(["statistics"], axis=1)
     return df
