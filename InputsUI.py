@@ -1,5 +1,5 @@
 """
-Solicits input from the user via a generated UI.
+Generates a GUI to solicit user input and return search results.
 
 Created by Amit Rubinstein (March 2021)
 """
@@ -112,11 +112,10 @@ def getUserInput():
 def showSearchResults(df, date, time, party_size, hood):
     layout = [
         [sg.Text("Search Results", justification="center", size=(45,1), font=("Source Sans Bold", 25))],
-        [sg.Text(size=(30,1)), sg.Image(filename = "smallCal.png"), sg.Text(date, justification="center", font=("Source Sans Bold", 16)), 
+        [sg.Text(size=(28,1)), sg.Image(filename = "smallCal.png"), sg.Text(date, justification="center", font=("Source Sans Bold", 16)), 
         sg.Image(filename = "smallTime.png"), sg.Text(time, font=("Source Sans Bold", 16)),
         sg.Image(filename = "smallParty.png"), sg.Text(party_size, font=("Source Sans Bold", 16)),
         sg.Image(filename = "smallLoc.png"), sg.Text(hood, font=("Source Sans Bold", 16))],
-        #[sg.Text(date+" • "+time+" • "+party_size+" • "+hood, justification="center", size=(80,1), font=("Source Sans Bold", 14))],
         [sg.Text()],
         ]
     
@@ -130,7 +129,6 @@ def showSearchResults(df, date, time, party_size, hood):
         else:
             layout.append([sg.Image(filename = "45Stars.png"), sg.Text(row["yelp rating"], font=("Source Sans Bold", 14))])
         layout.append([sg.Text("Available Times:", font=("Source Sans Bold", 14))])
-        #times = row["times"].strip("][''").split(", ")
         times = ast.literal_eval(row["times"])
         for i in times:
             print(i)
