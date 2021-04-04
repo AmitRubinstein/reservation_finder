@@ -10,3 +10,6 @@ GUI to get reservation detials from the user:
 
 GUI to return search results:
 ![alt text](https://github.com/AmitRubinstein/ReservationFinder/blob/main/GUI%20Screenshots/SearchResults.png?raw=true)
+
+Clicking on one of the available reservation times will direct the user to the restaurant's OpenTable page.
+![alt text](https://github.com/AmitRubinstein/ReservationFinder/blob/main/GUI%20Screenshots/OpenTable%20Webpage.png?raw=true)
