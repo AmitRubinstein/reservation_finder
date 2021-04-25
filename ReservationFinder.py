@@ -13,7 +13,7 @@ import requests
 import re
 import json
 import openpyxl
-import InputsUI
+import ResFinderGUI
 from requests_html import HTMLSession
 
 
@@ -122,13 +122,13 @@ def getYelpReviews(df):
 
 #Orchestrate execution of script and return the generated dataframe as a spreadsheet.
 def main():
-    date, time, party_size, hood = InputsUI.getUserInput()
+    date, time, party_size, hood = ResFinderGUI.getUserInput()
     df = scrapeOpenTable(date, time, party_size, hood)
     df = getYelpReviews(df)
     df = getReservationTimes(df, date, time, party_size)
     df.to_csv("OTrestaurants.csv")
     df = pd.read_csv("OTrestaurants.csv")
-    InputsUI.showSearchResults(df, date, time, party_size, hood)
+    ResFinderGUI.showSearchResults(df, date, time, party_size, hood)
 
 if __name__ == "__main__":
     main()
