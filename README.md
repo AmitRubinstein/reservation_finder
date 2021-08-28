@@ -1,4 +1,4 @@
-# ReservationFinder
+# reservation_finder
 
 This program was designed to help find appealing restaurant reservations more easily. This program queries for reservations on OpenTable 
 based on user-provided input and cross-references the results with Yelp. The program then returns available reservations for restaurants with 4+ stars on Yelp.
