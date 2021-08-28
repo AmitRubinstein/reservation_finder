@@ -13,7 +13,7 @@ import requests
 import re
 import json
 import openpyxl
-import ResFinderGUI
+import res_finder_gui
 from requests_html import HTMLSession
 
 
